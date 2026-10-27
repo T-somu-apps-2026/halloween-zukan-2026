@@ -50,6 +50,31 @@
     margin-bottom: 14px;
   }
 
+  .pager {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 24px 0 8px;
+  }
+
+  .pager button {
+    min-width: 40px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .pager button.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -199,6 +224,7 @@
 <div id="count"></div>
 
 <div class="grid" id="grid"></div>
+<div class="pager" id="pager"></div>
 
 <div class="overlay" id="overlay">
   <div class="modal">
@@ -213,12 +239,15 @@
 <script src="items.js"></script>
 <script>
   const grid = document.getElementById('grid');
+  const pager = document.getElementById('pager');
   const overlay = document.getElementById('overlay');
   const closeBtn = document.getElementById('closeBtn');
   const modalImg = document.getElementById('modalImg');
   const modalNo = document.getElementById('modalNo');
   const modalName = document.getElementById('modalName');
   const modalStory = document.getElementById('modalStory');
+
+  const PAGE_SIZE = 10;
 
   // 名前が入っている（＝完成している）ものだけを表示する
   const registered = items
@@ -227,32 +256,62 @@
 
   document.getElementById('count').textContent = `${registered.length} 件 公開中`;
 
-  registered.forEach(({ item, no }) => {
-    const card = document.createElement('div');
-    card.className = 'card';
+  const pageCount = Math.max(1, Math.ceil(registered.length / PAGE_SIZE));
+  let currentPage = 1;
 
-    const thumb = document.createElement('div');
-    if (item.file) {
-      thumb.className = 'thumb';
-      const img = document.createElement('img');
-      img.src = 'images/' + item.file;
-      img.alt = item.name;
-      img.onerror = () => { thumb.classList.add('empty'); thumb.innerHTML = '?'; };
-      thumb.appendChild(img);
-    } else {
-      thumb.className = 'thumb empty';
-      thumb.textContent = '?';
+  function renderGrid() {
+    grid.innerHTML = '';
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageItems = registered.slice(start, start + PAGE_SIZE);
+
+    pageItems.forEach(({ item, no }) => {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const thumb = document.createElement('div');
+      if (item.file) {
+        thumb.className = 'thumb';
+        const img = document.createElement('img');
+        img.src = 'images/' + item.file;
+        img.alt = item.name;
+        img.loading = 'lazy';
+        img.onerror = () => { thumb.classList.add('empty'); thumb.innerHTML = '?'; };
+        thumb.appendChild(img);
+      } else {
+        thumb.className = 'thumb empty';
+        thumb.textContent = '?';
+      }
+      card.appendChild(thumb);
+
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = item.name;
+      card.appendChild(label);
+
+      card.addEventListener('click', () => openModal(item, no));
+      grid.appendChild(card);
+    });
+  }
+
+  function renderPager() {
+    pager.innerHTML = '';
+    if (pageCount <= 1) return;
+    for (let p = 1; p <= pageCount; p++) {
+      const btn = document.createElement('button');
+      btn.textContent = p;
+      if (p === currentPage) btn.classList.add('active');
+      btn.addEventListener('click', () => {
+        currentPage = p;
+        renderGrid();
+        renderPager();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      pager.appendChild(btn);
     }
-    card.appendChild(thumb);
+  }
 
-    const label = document.createElement('div');
-    label.className = 'label';
-    label.textContent = item.name;
-    card.appendChild(label);
-
-    card.addEventListener('click', () => openModal(item, no));
-    grid.appendChild(card);
-  });
+  renderGrid();
+  renderPager();
 
   function openModal(item, no) {
     modalNo.textContent = 'No.' + no;
